@@ -1,4 +1,4 @@
-private static final Logger log = LoggerFactory.getLogger(MainTest.class);
+	private static final Logger log = LoggerFactory.getLogger(MainTest.class);
 	private static Properties props = new Properties();
 
 	static {
