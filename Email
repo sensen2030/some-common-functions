@@ -80,8 +80,7 @@
 					List<InternetAddress> recips = new ArrayList<InternetAddress>();
 					for (String to : toArray) {
 						if (StringUtils.isNotBlank(to)) {
-							recips.add(new InternetAddress(CoverWordsUtils
-									.decryptMail(to)));
+							recips.add(new InternetAddress(to));
 						}
 					}
 					message.setRecipients(Message.RecipientType.TO,
@@ -89,8 +88,7 @@
 				} else {
 					message.setRecipient(
 							Message.RecipientType.TO,
-							new InternetAddress(CoverWordsUtils
-									.decryptMail(tos)));
+							new InternetAddress(tos));
 				}
 			}
 
@@ -101,8 +99,7 @@
 					List<InternetAddress> recips = new ArrayList<InternetAddress>();
 					for (String cc : ccArray) {
 						if (StringUtils.isNotBlank(cc)) {
-							recips.add(new InternetAddress(CoverWordsUtils
-									.decryptMail(cc)));
+							recips.add(new InternetAddress(cc));
 						}
 					}
 					message.setRecipients(Message.RecipientType.CC,
@@ -110,8 +107,7 @@
 				} else {
 					message.setRecipient(
 							Message.RecipientType.CC,
-							new InternetAddress(CoverWordsUtils
-									.decryptMail(ccs)));
+							new InternetAddress(ccs));
 				}
 			}
 
@@ -122,8 +118,7 @@
 					List<InternetAddress> recips = new ArrayList<InternetAddress>();
 					for (String bcc : bccArray) {
 						if (StringUtils.isNotBlank(bcc)) {
-							recips.add(new InternetAddress(CoverWordsUtils
-									.decryptMail(bcc)));
+							recips.add(new InternetAddress(bcc));
 						}
 					}
 					message.setRecipients(Message.RecipientType.BCC,
@@ -131,8 +126,7 @@
 				} else {
 					message.setRecipient(
 							Message.RecipientType.BCC,
-							new InternetAddress(CoverWordsUtils
-									.decryptMail(bccs)));
+							new InternetAddress(bccs));
 				}
 			}
 
