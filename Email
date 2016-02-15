@@ -1,0 +1,140 @@
+private static Properties props = new Properties();
+
+static {
+    	props.put("mail.smtp.host", Mail_Server);
+    	props.put("mail.smtp.auth", "true");
+    	props.put("mail.smtp.ssl.trust", Mail_Server);	
+  }
+  
+  /**
+	 * 发送邮件
+	 * @param subject	邮件主题
+	 * @param content	邮件正文内容
+	 * @param tos	邮件接收
+	 * @param ccs	抄送
+	 * @param bccs 秘密抄送
+	 * @param attachmentName	附件地址，在服务器上的绝对地址
+	 * @return
+	 */
+	public boolean sendEmail(String subject, String content, String tos, String ccs, String bccs, List<String> attachmentNameList){
+	    Session session = Session.getInstance(props);
+		  Message message = new MimeMessage(session);
+		  try{
+			  message.setSubject(subject);
+			
+			  Multipart multiPart = new MimeMultipart();
+			  if(StringUtils.isNotBlank(content)){	//设置邮件正文
+				  MimeBodyPart body = new MimeBodyPart();
+				  DataHandler dh = new DataHandler(content, "text/html;charset=gb2312");
+				  body.setDataHandler(dh);
+				  multiPart.addBodyPart(body);
+			  }
+			
+			  for(BodyPart attchment : getAttchmentsByFileName(attachmentNameList)){	//将邮件正文和附件，添加到邮件中去，这里支持html格式的正文内容
+				  multiPart.addBodyPart(attchment);
+			  }
+			  message.setContent(multiPart);	//将邮件正文和附件，添加到邮件中去
+			  message.setSentDate(new Date());
+			  message.setFrom(new InternetAddress(XXX));  //XXX是发件人email地址
+			
+			  //收件人
+			  if(StringUtils.isNotBlank(tos)){
+				  String[] toArray = tos.split(MAIL_SEP);
+				  if(toArray.length > 0){
+  					List<InternetAddress> recips = new ArrayList<InternetAddress>();
+  					for(String to : toArray){
+  						if(StringUtils.isNotBlank(to)){
+  							recips.add(new InternetAddress(CoverWordsUtils.decryptMail(to)));
+  						}
+  					}
+  					message.setRecipients(Message.RecipientType.TO, recips.toArray(new InternetAddress[recips.size()]));
+				  }else{
+					  message.setRecipient(Message.RecipientType.TO, new InternetAddress(CoverWordsUtils.decryptMail(tos)));
+				  }
+			  }
+			  
+			  //抄送人
+			  if(StringUtils.isNotBlank(ccs)){
+				  String[] ccArray = ccs.split(MAIL_SEP);
+				  if(ccArray.length > 0){
+  					List<InternetAddress> recips = new ArrayList<InternetAddress>();
+  					for(String cc : ccArray){
+  						if(StringUtils.isNotBlank(cc)){
+  							recips.add(new InternetAddress(CoverWordsUtils.decryptMail(cc)));
+  						}
+  					}
+  					message.setRecipients(Message.RecipientType.CC, recips.toArray(new InternetAddress[recips.size()]));
+				  }else{
+					  message.setRecipient(Message.RecipientType.CC, new InternetAddress(CoverWordsUtils.decryptMail(ccs)));
+				  }
+			  }
+			  
+			  //秘密抄送人
+			  if(StringUtils.isNotBlank(bccs)){
+				  String[] bccArray = bccs.split(MAIL_SEP);
+				  if(bccArray.length > 0){
+					  List<InternetAddress> recips = new ArrayList<InternetAddress>();
+					  for(String bcc : bccArray){
+						if(StringUtils.isNotBlank(bcc)){
+							recips.add(new InternetAddress(CoverWordsUtils.decryptMail(bcc)));
+						}
+					}
+					message.setRecipients(Message.RecipientType.BCC, recips.toArray(new InternetAddress[recips.size()]));
+  				}else{
+  					message.setRecipient(Message.RecipientType.BCC, new InternetAddress(CoverWordsUtils.decryptMail(bccs)));
+  				}
+			  }
+			
+			  Transport transport = session.getTransport(SMTP_PROTOCOL);
+			  transport.connect(Mail_Server, SMTP_PORT, USER_NAME, PASSWD);
+			  transport.sendMessage(message, message.getAllRecipients());
+			  transport.close();
+			  saveSendEmail(subject,content);
+		  }catch (AddressException e) {
+			  log.error("send Email,address format fault",e);
+			  warn();// 发送异常
+			  return false;
+		  } catch (MessagingException e) {
+  			log.error("send Email,message fault",e);
+  			warn();// 发送异常
+  			return false;
+  		} catch (Exception e) {
+  			log.error("send Email,unknown fault",e);
+  			warn();// 发送异常
+  			return false;
+		  }
+		
+		return true;
+	}
+	
+	/**
+	 * 根据附件文件名，获取附件列表
+	 * @param attachmentNameList
+	 * @return
+	 */
+	private List<BodyPart> getAttchmentsByFileName(List<String> attachmentNameList){
+		List<BodyPart> attchments = new ArrayList<BodyPart>();
+		
+		if(attachmentNameList != null){
+			for(String attchmentName : attachmentNameList){
+				try {
+					BodyPart mdp = new MimeBodyPart();
+					
+					File file = new File(attchmentName);
+					FileDataSource fds = new FileDataSource(file);
+					DataHandler dh = new DataHandler(fds);
+					mdp.setDataHandler(dh);
+					try {
+						mdp.setFileName(MimeUtility.encodeWord(file.getName()));  //防止中文乱码
+					} catch (UnsupportedEncodingException e) {
+						log.error("", e);
+					}
+					attchments.add(mdp);
+				} catch (MessagingException e) {
+					log.error("丢弃附件，attchmentName:{}", attchmentName);
+					log.error("", e);
+				}
+			}
+		}
+		return attchments;
+	}
