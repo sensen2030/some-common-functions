@@ -1,0 +1,34 @@
+servlet，request和response，对缓冲区read和write都是一次性的，读完一次就没有了。这里实现了对它们的多次读取，原理就是将字节流读出后，保存起来，供后续的多次读取。
+/**
+ * 保存request body信息，保证getInputStream和getReader不会读完就没了
+ * @author sensen.li
+ *
+ */
+public class AccessLogRequestWrapper extends HttpServletRequestWrapper {
+	private final byte[] body;
+	private static final String ENCODING = "UTF-8";
+	
+	public AccessLogRequestWrapper(HttpServletRequest request)   
+			throws IOException {  
+        super(request);
+        body = IOUtils.toByteArray(request.getReader(), ENCODING);
+	}
+	
+	@Override
+	public ServletInputStream getInputStream() throws IOException {
+		final ByteArrayInputStream bais = new ByteArrayInputStream(body);  
+		return new ServletInputStream() {
+			@Override  
+            public int read() throws IOException {  
+                return bais.read();  
+            }  
+		};
+	}
+	
+	@Override  
+    public BufferedReader getReader() throws IOException {  
+		return new BufferedReader(new InputStreamReader(getInputStream())); 
+	}
+}
+
+responseWrapper和此类似，不过是重写getOutputStream和getWriter方法就可以了
