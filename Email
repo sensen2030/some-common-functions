@@ -185,3 +185,5 @@
 		}
 		return attchments;
 	}
+
+使用jar包：javax.mail
