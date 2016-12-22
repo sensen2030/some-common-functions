@@ -10,8 +10,12 @@ public class AccessLogRequestWrapper extends HttpServletRequestWrapper {
 	
 	public AccessLogRequestWrapper(HttpServletRequest request)   
 			throws IOException {  
-        super(request);
-        body = IOUtils.toByteArray(request.getReader(), ENCODING);
+		super(request);
+		if(request.getParameterMap() == null || request.getParameterMap().size() == 0){		//针对不是key value形式提交的参数
+			body = IOUtils.toByteArray(request.getReader(), ENCODING);
+		} else {
+			body = new byte[]{};
+		}
 	}
 	
 	@Override
