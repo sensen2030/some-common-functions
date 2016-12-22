@@ -1,0 +1,152 @@
+import java.util.LinkedList;
+
+import me.chanjar.weixin.common.util.StringUtils;
+
+public class UrlTrie{  
+	
+	class Node {  
+	    String word;  
+	    boolean isEnd;   
+	    LinkedList<Node> childList; // the child list  
+	    
+	    public Node(String word){  
+	        childList = new LinkedList<Node>();  
+	        isEnd = true;  
+	        this.word = word;
+	    }  
+	    
+	    public Node subNode(String word){  
+	        if(childList != null){  
+	            for(Node eachChild : childList){  
+	                if(eachChild.word.equals(word)){  
+	                     return eachChild;  
+	                }  
+	            }  
+	        }  
+	        return null;  
+	   }  
+	}
+	
+    private Node root;  
+   
+    public UrlTrie(){  
+        root = new Node("");   
+    }  
+   
+    /**
+     * 将url插入到trie中
+     * @param url
+     */
+    public void insertUrl(String url){  
+    	insert(getArrFromUrl(url));
+    }  
+    
+    /**
+     * 将数组插入到trie中
+     * @param arr
+     */
+    public void insert(String[] arr){
+    	if(exactSerach(arr) == true) return;  
+        
+        Node current = root;   
+        for(String item : arr){  
+            Node child = current.subNode(item);  
+            if(child != null){   
+                current = child;  
+            } else {  
+            	Node newChild = new Node(item);
+                current.childList.add(newChild);  
+                current.isEnd = false;
+                current = newChild;  
+            }  
+        }   
+        
+        current.isEnd = true; 
+    }
+    
+    /**
+     * 精确查找，url是否存在
+     * @param url
+     * @return
+     */
+    public boolean exactSearchUrl(String url){  
+    	return (search0(getArrFromUrl(url)) == 0) ? true : false;
+    }  
+    
+    /**
+     * 精确查找，数组是否存在
+     * @param arr
+     * @return
+     */
+    public boolean exactSerach(String[] arr){
+    	return (search0(arr) == 0) ? true : false;
+    }
+    
+    /**
+     * 前缀查找
+     * @param url
+     * @return 里面某些类，是url的前缀
+     */
+    public boolean prefixSearchUrl(String url){  
+    	return (search0(getArrFromUrl(url)) != -1) ? true : false;
+    }  
+    
+    /**
+     * 精确查找，数组是否存在
+     * @param arr
+     * @return
+     */
+    public boolean prefixSerach(String[] arr){
+    	return (search0(arr) != -1) ? true : false;
+    }
+    
+    /**
+     * 
+     * @param arr
+     * @return -1: 未找到或者在非叶子节点中找到  0:在叶子节点中找到  1:查找到叶子节点的时候，arr还有剩余
+     */
+    private int search0(String[] arr){
+    	Node current = root;  
+        
+        for(String item : arr){      
+        	Node findedSubNode = current.subNode(item); 
+	        if(findedSubNode == null){
+	        	if(current.isEnd)return 1;
+	        	else return -1;
+	        }
+	        else  
+	        	current = findedSubNode;
+        }  
+        if (current.isEnd == true) return 0;  
+        else return -1;  
+    }
+    
+    /**
+     * 从url中解析出string数组
+     * @param url
+     * @return
+     */
+    private String[] getArrFromUrl(String url){
+    	if(StringUtils.isBlank(url)) return new String[]{};
+    	if(url.startsWith("/")){
+    		url = url.substring(1);
+    	}
+        return url.split("/");
+    }
+    
+    public static void main(String[] args) {  
+        UrlTrie trie = new UrlTrie();  
+        trie.insertUrl("/intercar/ui/ct"); 
+        trie.insertUrl("/ct");  
+      
+        // testing deletion  
+        System.out.println(trie.exactSearchUrl("/ct"));
+        System.out.println(trie.exactSearchUrl("/ct/order/confirm"));  
+        System.out.println(trie.exactSearchUrl("/intercar/ui/ct"));
+        System.out.println(trie.exactSearchUrl("/intercar/ui/ct/order/confirm"));
+        System.out.println(trie.prefixSearchUrl("/ct/hi"));
+        System.out.println(trie.prefixSearchUrl("/ct/order/confirm"));  
+        System.out.println(trie.prefixSearchUrl("/intercar/ui/pp"));
+        System.out.println(trie.prefixSearchUrl("/intercar/ui/ct/order/confirm")); 
+    }  
+}
