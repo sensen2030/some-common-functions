@@ -1,0 +1,241 @@
+#! /bin/bash
+
+#这个路径要和文件位置保持一致
+cd /home/q/sensen.li/.script/custombehavior
+
+if [ -f ./.log ]
+then
+rm -rf ./.log
+echo 文件.log被移除
+fi
+
+if [ -f ./.tempres ]
+then
+rm -f ./.tempres
+echo 文件.tempres被移除
+fi
+
+HOSTNAME='192.168.242.38'
+PORT='3307'
+USERNAME='wap_intercar_r'
+PASSWORD='uz29GXQ8fVrOgKLM'
+DBNAME='intercar'
+
+initial_sql="mysql -h${HOSTNAME} -P${PORT} -u${USERNAME} -p${PASSWORD} ${DBNAME} -e "
+
+#param
+yesterday=`date -d "yesterday" +%Y-%m-%d`
+
+declare -A sqls=(
+        ["订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\""
+        ["接送机订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and order_type in (4,6)"
+        ["自由行订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and order_type in (12)"
+        ["已支付订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and pay_status=2"
+        ["接送机已支付订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and order_type in (4,6) and pay_status=2"
+        ["自由行已支付订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and order_type in (12) and pay_status=2"
+        ["未支付取消订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and pay_status=4 and ref_amount = 0"
+        ["接送机未支付取消订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and order_type in (4,6) and pay_status=4 and ref_amount = 0"
+        ["自由行未支付取消订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and order_type in (12) and pay_status=4 and ref_amount = 0"
+        ["已支付取消订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and pay_status=4 and ref_amount > 0"
+        ["接送机已支付取消订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and order_type in (4,6) and pay_status=4 and ref_amount > 0"
+        ["自由行已支付取消订单总数"]="select count(0) from tts_order where create_time like \\\"${yesterday}%\\\" and order_type in (12) and pay_status=4 and ref_amount > 0"
+)
+
+print_sort=(订单总数 接送机订单总数 自由行订单总数 已支付订单总数 接送机已支付订单总数 自由行已支付订单总数 未支付取消订单总数 接送机未支付取消订单总数 自由行未支付取消订单总数 已支付取消订单总数 接送机已支付取消订单总数 自由行已支付取消订单总数)
+
+declare -A resultmap=()
+for key in ${!sqls[@]}
+do
+        temp="${initial_sql} \"${sqls[${key}]}\" --skip-column-name"
+        echo ${key} '进行中' ${temp}
+        resultmap[${key}]=`eval $temp`
+done
+
+
+#这个路径要和文件位置保持一致
+cd /home/q/sensen.li/.script/custombehavior
+
+#param
+yesterday=`date -d "yesterday" +%Y-%m-%d`
+monthofyesterday=`date -d "yesterday" +%Y%m`
+log_name_prefix="catalina.out.${yesterday}";
+log_name_suffix=".gz";
+log_backup_dir="/home/q/sensen.li/.log"
+c1="gzip -dc /home/q/sensen.li/.log/${log_name_prefix}*${log_name_suffix} | grep -a \"AccessLogFilter:\" | grep "
+
+#删除之前下载的日志文件
+eval 'sudo rm -rf ${log_backup_dir}/*'
+echo "${log_backup_dir}删除完毕"
+
+##下载日志文件
+servers=(l-intertaxi1.wap.cn6 l-intertaxi2.wap.cn6 l-intertaxi21.wap.cn6 l-intertaxi22.wap.cn6)
+for((i=0;i<${#servers[*]};i++))
+do
+        #echo $[i]${servers[i]}
+        download="sudo rsync -avI root@l-mfsclt1.ops.cn1::CN6_MFS_WAP_CN6_interCar/${servers[i]}/${monthofyesterday}/${log_name_prefix}${log_name_suffix} ${log_backup_dir}/${log_name_prefix}_${i}${log_name_suffix} --password-file=/etc/rsyncd_pass.sec"
+        echo ${download}
+        ${download}
+done
+
+#pv
+pv=' | wc -l'
+#uv
+uv=" | awk -F '\"uid\":\"' '{print \$2}' | awk -F '\",\"vid\"' '{print \$1}' | sort | uniq | wc -l"
+#成功pv, 如果改了返回页面，这里一定要同步改了，切记切记
+succpv=' | grep "://car/createOrder" | wc -l'
+#车型列表页 分from值统计
+rank=" \"/intercar/api/carType/rankList\" | awk -F \"(&from=)|(&toLongitude=)\" '{print \$2}' | sort -k 1 | uniq -c"
+
+#机票订单卡片推荐 日志关键字
+fkey='/touch/cardListService'
+fdesc='机票订单卡片推荐'
+
+#酒店下单成功页和订单详情页推荐
+hkey='/wireless/api/hotel/suggest'
+hdesc='酒店下单成功页和订单详情页推荐'
+
+#国际车订单卡片推荐
+ikey='/wireless/api/cardList'
+idesc='国际车订单卡片推荐'
+
+declare -A logcommand=(
+        #机票订单卡片推荐
+        ["${fdesc}pv"]="${c1}${fkey}${pv}"
+        ["${fdesc}uv"]="${c1}${fkey}${uv}"
+        ["${fdesc}成功pv"]="${c1}${fkey}${succpv}"
+        #酒店下单成功页和订单详情页推荐，包含国内酒店
+        ["${hdesc}pv"]="${c1}${hkey}${pv}"
+        ["${hdesc}uv"]="${c1}${hkey}${uv}"
+        ["${hdesc}成功pv"]="${c1}${hkey}${succpv}"
+        #国际车接机跳送机
+#       ["${idesc}pv"]="${c1}${ikey}${pv}"
+#       ["${idesc}uv"]="${c1}${ikey}${uv}"
+#      ["${idesc}成功pv"]="${c1}${ikey}${succpv}"
+)
+
+declare -A result=()
+for key in ${!logcommand[@]}
+do
+        echo 统计[${key}]中
+        echo 命令：${logcommand[${key}]}
+        result[${key}]=`eval ${logcommand[${key}]}`
+        echo ${result[${key}]}
+done
+
+declare -A from_map_rankpage=()
+from_command_rankpage=${c1}${rank}
+eval "${from_command_rankpage}>tmp"
+while read line
+do
+        f1=$(cut -d ' ' -f 1 <<< $line)
+        f2=$(cut -d ' ' -f 2 <<< $line)
+        from_map_rankpage[${f2}]=$f1
+done<tmp
+
+#顺序要保证，名字也要按照规定取(此处实现地略坑)
+log_print_sort=("${fdesc}pv" "${fdesc}uv" "${fdesc}成功pv" "${fdesc}推荐成功率" "${hdesc}pv" "${hdesc}uv" "${hdesc}成功pv" "${hdesc}推荐成功率")
+
+
+
+#这个路径要和文件位置保持一致
+cd /home/q/sensen.li/.script/custombehavior
+
+source ./mysql_data.sh
+source ./log_data.sh
+
+#邮件
+subject="去哪儿国际接送机单量/访问量统计${yesterday}"
+from="sensen.li@.com"
+to="sensen.li@.com,"
+content_file=".content"
+
+if [ -f ${content_file} ]
+then
+        sudo rm -f ${content_file}
+        echo 文件${content_file}被删除
+fi
+
+echo "<b>1：订单</b><br/><table border='1' cellpadding='0' cellspacing='0'><tr><td></td><td>数量</td></tr>">>${content_file}
+for key in ${print_sort[@]}
+do
+        #echo ${key} ${resultmap[${key}]}
+        #echo ${key} ${resultmap[${key}]}>>${content_file}
+        echo "<tr><td>${key}</td><td>${resultmap[${key}]}</td></tr>">>${content_file}
+done
+echo "</table><br/><br/><br/>">>${content_file}
+
+echo "<b>2：交叉推荐来源</b><br/><table border='1' cellpadding='0' cellspacing='0'><tr><td></td><td>数量</td></tr>">>${content_file}
+for key in ${log_print_sort[@]}
+do
+        if [[ ${key} =~ "成功pv" ]]
+        then
+                fractions=${result[${key}]} #分子
+        elif [[ ${key} =~ "pv" ]]
+        then
+                denominator=${result[${key}]} #分母
+        fi
+
+        if [[ ${key} =~ "推荐成功率" ]]
+        then
+                #echo 111${fractions}:${denominator}  | awk '{printf "%s %.2f", $1, $2}'
+                #echo ${key} `echo "scale=2; ${fractions}/${denominator}" | bc`  | awk '{printf "%s %.2f", $1, $2}'
+                echo ${key} `echo "scale=2; ${fractions}/${denominator}" | bc` | awk '{printf "<tr><td>%s</td> <td>%.2f</td></tr>", $1, $2}'>>${content_file}
+                fractions=0 #分子
+                denominator=-999  #分母
+        else
+                #echo 222${fractions}:${denominator}
+                #echo ${key} ${result[${key}]} | awk '{printf "%s %.2f", $1, $2}'
+                echo ${key} ${result[${key}]} | awk '{printf "<tr><td>%s</td> <td>%.2f</td></tr>", $1, $2}'>>${content_file}
+        fi
+done
+echo "</table><br/><br/><br/>">>${content_file}
+
+declare -A from_expr=()
+from_expr['202']='PC端-国内自驾首页轮播推荐位第5帧'
+from_expr['203']='PC国际机票-支付完成页'
+from_expr['25']='大客户端首页-车车'
+from_expr['179']='大客户端机票-机票行程卡'
+from_expr['437']='大客户端服务推荐-机票'
+from_expr['589']='VIP消息聚合推送整合'
+from_expr['490']='大客户端首页-旅游精选模块-接送机-平台接送机填单页'
+from_expr['318']='大客户端首页-搜索'
+from_expr['319']='大客户端首页-车车-代金券'
+from_expr['426']='H5-顺风车-宣传页面-2'
+from_expr['713']='海外车跳转rank页'
+from_expr['620']='大客户端火车票-更多服务-接送站'
+from_expr['376']='大客户端订单-无订单服务推荐入口'
+from_expr['463']='大客户端拼车-拼车下单后中间页-返程下单按钮'
+from_expr['3']='大客户端机票-机票支付成功'
+from_expr['571']='大客户端机票-订单详情-底部交叉推荐'
+from_expr['572']='大客户端机票-航班动态-交叉推荐'
+from_expr['218']='大客户端酒店-订单详情页'
+from_expr['607']='无限机票-订单详情-猜你喜欢送机'
+from_expr['623']='订单详情页-互推-接送机'
+from_expr['619']='无线火车票-首页-接送站'
+from_expr['1']='机票发送叫车短信（订票成功）'
+from_expr['2']='机票发送叫车短信（飞机起飞前某时间）'
+from_expr['647']='汽车票-国内/国际汽车票-导航区'
+from_expr['5']='大客户端机票-机票宝典首页'
+
+echo "<b>3：rank页（车型选择页)来源</b><br/><table border='1' cellpadding='0' cellspacing='0'><tr><td></td><td>数量</td></tr>">>${content_file}
+for key in ${!from_map_rankpage[@]}
+do
+        if [[ ${from_expr[${key}]} = '' ]]
+        then
+                echo "<tr><td>${key}</td><td>${from_map_rankpage[$key]}</td></tr>">>${content_file}
+        else
+                echo "<tr><td>${from_expr[${key}]}</td><td>${from_map_rankpage[$key]}</td></tr>">>${content_file}
+        fi
+done
+echo "</table><br/><br/><br/>">>${content_file}
+
+#发送邮件
+mail=email
+rm -rf ${mail}
+echo "From:机器l-intertaxi1.wap.cn6..com(ip:192.168.252.153)<sensen.li@.com>">${mail}
+echo "To:sensen.li@.com,jijx@.com,t_long@.com,dywang@.com,huangyh@.com">>${mail}
+echo "Content-type:text/html;charset=UTF-8">>${mail}
+echo "Subject:${subject}">>${mail}
+cat ${content_file}>>${mail}
+cat ${mail} | /usr/sbin/sendmail -t
+cat ${mail} | /usr/sbin/sendmail -t
