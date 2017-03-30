@@ -15,11 +15,11 @@ rm -f ./.tempres
 echo 文件.tempres被移除
 fi
 
-HOSTNAME='192.168.242.38'
-PORT='3307'
-USERNAME='wap_intercar_r'
-PASSWORD='uz29GXQ8fVrOgKLM'
-DBNAME='intercar'
+HOSTNAME=''
+PORT=''
+USERNAME=''
+PASSWORD=''
+DBNAME=''
 
 initial_sql="mysql -h${HOSTNAME} -P${PORT} -u${USERNAME} -p${PASSWORD} ${DBNAME} -e "
 
@@ -72,7 +72,7 @@ servers=(l-intertaxi1.wap.cn6 l-intertaxi2.wap.cn6 l-intertaxi21.wap.cn6 l-inter
 for((i=0;i<${#servers[*]};i++))
 do
         #echo $[i]${servers[i]}
-        download="sudo rsync -avI root@l-mfsclt1.ops.cn1::CN6_MFS_WAP_CN6_interCar/${servers[i]}/${monthofyesterday}/${log_name_prefix}${log_name_suffix} ${log_backup_dir}/${log_name_prefix}_${i}${log_name_suffix} --password-file=/etc/rsyncd_pass.sec"
+        download="sudo rsync -avI root@jiqiming::muluming/${servers[i]}/${monthofyesterday}/${log_name_prefix}${log_name_suffix} ${log_backup_dir}/${log_name_prefix}_${i}${log_name_suffix} --password-file=/etc/rsyncd_pass.sec"
         echo ${download}
         ${download}
 done
@@ -84,7 +84,7 @@ uv=" | awk -F '\"uid\":\"' '{print \$2}' | awk -F '\",\"vid\"' '{print \$1}' | s
 #成功pv, 如果改了返回页面，这里一定要同步改了，切记切记
 succpv=' | grep "://car/createOrder" | wc -l'
 #车型列表页 分from值统计
-rank=" \"/intercar/api/carType/rankList\" | awk -F \"(&from=)|(&toLongitude=)\" '{print \$2}' | sort -k 1 | uniq -c"
+rank=" \"keyword\" | awk -F \"(&from=)|(&toLongitude=)\" '{print \$2}' | sort -k 1 | uniq -c"
 
 #机票订单卡片推荐 日志关键字
 fkey='/touch/cardListService'
@@ -144,7 +144,7 @@ source ./mysql_data.sh
 source ./log_data.sh
 
 #邮件
-subject="去哪儿国际接送机单量/访问量统计${yesterday}"
+subject="单量/访问量统计${yesterday}"
 from="sensen.li@.com"
 to="sensen.li@.com,"
 content_file=".content"
@@ -191,31 +191,7 @@ done
 echo "</table><br/><br/><br/>">>${content_file}
 
 declare -A from_expr=()
-from_expr['202']='PC端-国内自驾首页轮播推荐位第5帧'
-from_expr['203']='PC国际机票-支付完成页'
-from_expr['25']='大客户端首页-车车'
-from_expr['179']='大客户端机票-机票行程卡'
-from_expr['437']='大客户端服务推荐-机票'
-from_expr['589']='VIP消息聚合推送整合'
-from_expr['490']='大客户端首页-旅游精选模块-接送机-平台接送机填单页'
-from_expr['318']='大客户端首页-搜索'
-from_expr['319']='大客户端首页-车车-代金券'
-from_expr['426']='H5-顺风车-宣传页面-2'
-from_expr['713']='海外车跳转rank页'
-from_expr['620']='大客户端火车票-更多服务-接送站'
-from_expr['376']='大客户端订单-无订单服务推荐入口'
-from_expr['463']='大客户端拼车-拼车下单后中间页-返程下单按钮'
-from_expr['3']='大客户端机票-机票支付成功'
-from_expr['571']='大客户端机票-订单详情-底部交叉推荐'
-from_expr['572']='大客户端机票-航班动态-交叉推荐'
-from_expr['218']='大客户端酒店-订单详情页'
-from_expr['607']='无限机票-订单详情-猜你喜欢送机'
-from_expr['623']='订单详情页-互推-接送机'
-from_expr['619']='无线火车票-首页-接送站'
-from_expr['1']='机票发送叫车短信（订票成功）'
-from_expr['2']='机票发送叫车短信（飞机起飞前某时间）'
-from_expr['647']='汽车票-国内/国际汽车票-导航区'
-from_expr['5']='大客户端机票-机票宝典首页'
+from_expr['202']='第5帧'
 
 echo "<b>3：rank页（车型选择页)来源</b><br/><table border='1' cellpadding='0' cellspacing='0'><tr><td></td><td>数量</td></tr>">>${content_file}
 for key in ${!from_map_rankpage[@]}
@@ -232,7 +208,7 @@ echo "</table><br/><br/><br/>">>${content_file}
 #发送邮件
 mail=email
 rm -rf ${mail}
-echo "From:机器l-intertaxi1.wap.cn6..com(ip:192.168.252.153)<sensen.li@.com>">${mail}
+echo "From:<sensen.li@.com>">${mail}
 echo "To:sensen.li@.com,jijx@.com,t_long@.com,dywang@.com,huangyh@.com">>${mail}
 echo "Content-type:text/html;charset=UTF-8">>${mail}
 echo "Subject:${subject}">>${mail}
