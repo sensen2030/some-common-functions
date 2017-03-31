@@ -27,8 +27,8 @@ if($uri ~ ^/$){
 netstat -n | awk '/^tcp/ {++S[$NF];++S[$NF]} END {for(a in S) print a, S[a]}'
 
 启动：sudo /home/q/redis-2.8.12-final/src/redis-server /etc/redis-slave.conf;
-关闭：sudo redis-cli -h 10.86.36.111 -p 6379 -a cheche_1234 shutdown
-简单密码认证：auth cheche_1234
+关闭：sudo redis-cli -h [host] -p [port] -a [password] shutdown
+简单密码认证：auth [password]
 
 pg启动:/opt/pg94/bin/pg_ctl -D /export/pg940_data start
 
